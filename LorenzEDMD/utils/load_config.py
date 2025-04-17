@@ -8,6 +8,7 @@ from functools import lru_cache
 
 from LorenzEDMD.config import (
     ModelSettings,
+    EDMDSettings
 )
 
 
@@ -21,6 +22,14 @@ def get_model_settings() -> ModelSettings:
     return ModelSettings()
 
 
+@lru_cache
+def get_edmd_settings() -> ModelSettings:
+    """
+    Loads the settings for the Dynamical Systems.
+
+    :return: Dynamical System settings object.
+    """
+    return EDMDSettings()
 
 
 
