@@ -10,7 +10,7 @@ from LorenzEDMD.config import ModelSettings
 
 import numpy as np
 from matplotlib import pyplot as plt
-
+from tqdm import tqdm
 MODEL_settings = get_model_settings()
 
 
@@ -59,7 +59,7 @@ class lorenz63:
         rng = np.random.default_rng(seed)
 
         index = 0
-        for i in range(n_steps):
+        for i in tqdm(range(n_steps)):
             t = ts[i]
             f = self._drift(t=t,Y=yold)
             g = self._diffusion(t=t,Y=yold)
