@@ -1,7 +1,9 @@
 import numpy as np
-from typing import Tuple
+from typing import List,Tuple
 import statsmodels.api as sm
 from scipy.linalg import eig 
+from pathlib import Path
+
 
 def normalise_data_chebyshev(data: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -58,3 +60,21 @@ def get_acf(obs : np.ndarray,
 
     lags = np.linspace(0,nlags*Dt,nlags+1)
     return lags, cf 
+
+def find_index(indices: List[Tuple[int, int, int]], target: Tuple[int, int, int]) -> int:
+    try:
+        return indices.index(target)
+    except ValueError:
+        return -1  
+    
+
+def Koopman_correlation_function(t,M,alpha1,alpha2,eigenvalues,to_include = None):
+    if to_include is None:
+        to_include = len(eigenvalues)
+        
+    alpha1 = alpha1[1:to_include+1]
+    alpha2 = alpha2[1:to_include+1]
+    eigenvalues = eigenvalues[1:to_include+1]
+    M = M[1:to_include+1,1:to_include+1]
+
+    return ( ( alpha1* np.exp(t*eigenvalues) ) @ M @ np.conj(alpha2) )

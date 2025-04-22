@@ -22,14 +22,15 @@ for degree in degrees:
         EDMD_SETTINGS.degree = degree
         EDMD_SETTINGS.flight_time = f_time
         edmd = EDMD_CHEB(EDMD_SETTINGS)
-        K = edmd.perform_edmd_chebyshev(scaled_data)
+        K = edmd.perform_edmd(scaled_data)
         list_ftime.append(edmd)
     list_degree.append(list_ftime)
 
-
-with open("./data/edmd_objects.pkl", "wb") as f:
-    pickle.dump(list_degree, f)
-
 lorenz.trajectory = None
-with open("./data/lorenz_low.pkl","wb") as f:
-    pickle.dump(lorenz,f)
+results = {
+    "edmd results": list_degree,
+    "lorenz settings": lorenz
+}
+
+with open("./data/edmd.pkl", "wb") as f:
+    pickle.dump(results, f)
