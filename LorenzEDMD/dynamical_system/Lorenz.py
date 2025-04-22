@@ -47,7 +47,7 @@ class lorenz63:
         diffusion = self.noise * np.eye(3)
         return diffusion
 
-    def integrate_EM(self,seed=None):
+    def integrate_EM(self,seed=None,show_progress: bool = True):
         t0 , tf = self.t_span
         n_steps = int((tf - t0) / self.dt)
         ts = np.linspace(t0, tf, n_steps + 1)
@@ -59,7 +59,7 @@ class lorenz63:
         rng = np.random.default_rng(seed)
 
         index = 0
-        for i in tqdm(range(n_steps)):
+        for i in tqdm(range(n_steps), disable= not show_progress):
             t = ts[i]
             f = self._drift(t=t,Y=yold)
             g = self._diffusion(t=t,Y=yold)
