@@ -2,11 +2,12 @@ from typing import List, Tuple, Optional
 from itertools import product
 import numpy as np
 from scipy.special import eval_chebyt
-from LorenzEDMD.utils.data_processing import normalise_data_chebyshev
+from LorenzEDMD.utils.data_processing import normalise_data_chebyshev, get_spectral_properties
 from tqdm import tqdm
 from LorenzEDMD.utils.load_config import get_edmd_settings
 from LorenzEDMD.config import EDMDSettings
 from sklearn.neighbors import KernelDensity
+
 
 EDMD_SETTINGS = get_edmd_settings()
 
@@ -99,7 +100,28 @@ class EDMD_CHEB:
         """
         Psi_X = self.evaluate_dictionary_batch(scaled_data)
         return Psi_X @ eigenvectors  # shape (T, M)
+    
+    def evaluate_koopman_eigenfunctions_reduced(
+        self,
+        scaled_data: np.ndarray,           # shape (T, 3)
+        tsvd_regulariser 
+    ) -> np.ndarray:
+        """
+        Evaluate Koopman eigenfunctions from reduced-space representation.
 
+        Parameters:
+            scaled_data: (T, 3) array of inputs (scaled to [-1, 1])
+            reduced_eigenvectors: (r, M) Koopman eigenvectors in reduced space
+            Ur: (N, r) truncated left singular vectors (from TSVD)
+
+        Returns:
+            Eigenfunction values: (T, M) complex array
+        """
+        if tsvd_regulariser.Ur is not None and tsvd_regulariser.reduced_right_eigvecs is not None:
+            Psi_X = self.evaluate_dictionary_batch(scaled_data)  # (T, N)
+            Psi_reduced = Psi_X @ tsvd_regulariser.Ur                             # (T, r)
+            return Psi_reduced @ tsvd_regulariser.reduced_right_eigvecs         # (T, M)
+        else: print("You need to first apply the TSVD decomposition")
 
     def _create_edmd_snapshots(
         self,
@@ -173,11 +195,14 @@ class TSVD():
         self.Ur = None
         self.Sr = None
         self.Kreduced = None
+        self.reduced_right_eigvecs = None
+        self.reduced_left_eigvecs = None
+        self.eigenvalues = None
 
-    def decompose(self,edmd: EDMD_CHEB, rel_threshold : float = 1e-6):
+    def decompose(self,edmd: EDMD_CHEB):
         if edmd.G is not None and edmd.A is not None:
             U, S, Vt = np.linalg.svd(edmd.G, full_matrices=False)
-            r = np.sum(S > rel_threshold *S[0])
+            r = np.sum(S > self.rel_threshold *S[0])
             Ur = U[:,:r] 
             Sr_inv = np.diag(1 / S[:r])
             K_reduced = Sr_inv @ (Ur.T @ edmd.A @ Ur)
@@ -186,9 +211,16 @@ class TSVD():
             self.Sr = S[:r]
             self.Kreduced = K_reduced
             return K_reduced
+        
+    def get_spectral_properties(self):
+        if self.Kreduced is not None:
+            eigenvalues , left_eigenvectors, right_eigenvectors = get_spectral_properties(self.Kreduced) #right_eigenvectors , left_eigenvectors
+            self.reduced_right_eigvecs = right_eigenvectors
+            self.reduced_left_eigvecs = left_eigenvectors
+            self.eigenvalues = eigenvalues
+        else: print("You need to first run the decompose method")
 
-    
-    def map_eigenvector(self,eigenvectors):
+    def map_eigenvectors(self,eigenvectors):
         if self.Ur is not None:
             return self.Ur @ eigenvectors
         else: print("You should first perform the TSVD decomposition")

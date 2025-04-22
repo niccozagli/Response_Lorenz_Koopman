@@ -1,5 +1,7 @@
 import numpy as np
 from typing import Tuple
+import statsmodels.api as sm
+from scipy.linalg import eig 
 
 def normalise_data_chebyshev(data: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -23,16 +25,36 @@ def get_spectral_properties(K : np.ndarray):
     Returns the sorted (decreasing orders in terms of absolute value) of eigenvalues
     and eigenvectors of the Koopman matrix
     """
-    eigenvalues, eigenvectors = np.linalg.eig(K)
+    eigenvalues, right_eigenvectors, left_eigenvectors = eig(K,left=True,right=True)
     # Sort indices by decreasing magnitude of eigenvalues
     sorted_indices = np.argsort(np.abs(eigenvalues))[::-1]
 
     # Apply sorting
     eigenvalues = eigenvalues[sorted_indices]
-    eigenvectors = eigenvectors[:, sorted_indices]
-    return eigenvalues , eigenvectors
+    right_eigenvectors = right_eigenvectors[:, sorted_indices]
+    left_eigenvectors = left_eigenvectors[:,sorted_indices]
 
+    diag = np.diag( left_eigenvectors.T.conj() @ right_eigenvectors )
+    scale_factors = 1.0 / np.sqrt(diag)
+    right_eigenvectors_normalised = right_eigenvectors * scale_factors[np.newaxis,:]
+    left_eigenvectors_normalised = left_eigenvectors *scale_factors[np.newaxis,:].conj()
+    return eigenvalues , right_eigenvectors_normalised , left_eigenvectors_normalised
 
+def check_if_complex(obs: np.ndarray):
+    return np.iscomplex(obs).any()
 
+def get_acf(obs : np.ndarray,
+            Dt : float,
+            nlags : int = 1500,
+):
+    is_complex = check_if_complex(obs)
+    if is_complex:
+        obs_real , obs_imag = np.real(obs) , np.imag(obs)
+        cf_real = sm.tsa.acf(obs_real,nlags=nlags) * np.var(obs_real)
+        cf_imag = sm.tsa.acf(obs_imag,nlags=nlags) * np.var(obs_imag)
+        cf = cf_real + cf_imag
+    else: 
+        cf = sm.tsa.acf(obs,nlags=nlags) * np.var(obs)
 
-
+    lags = np.linspace(0,nlags*Dt,nlags+1)
+    return lags, cf 
