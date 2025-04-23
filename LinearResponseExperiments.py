@@ -4,6 +4,14 @@ import numpy as np
 from tqdm import tqdm
 from joblib import Parallel, delayed
 import gc
+import psutil
+import os
+
+
+def print_memory(label=""):
+    process = psutil.Process(os.getpid())
+    mem_MB = process.memory_info().rss / 1024**2
+    print(f"[{label}] Memory usage: {mem_MB:.2f} MB")
 
 
 def get_observables(trajectory: np.ndarray):
@@ -37,10 +45,10 @@ def single_response(xi, eps, avg_obs, base_lorenz, seed=None):
         lorenzResponse.y0 = xi - eps * rho_pert(xi)
         _, resp_m = lorenzResponse.integrate_EM(rng=rng_m, show_progress=False)
 
-        obs_p = get_observables(resp_p)
-        obs_m = get_observables(resp_m)
+        obs_p = get_observables(resp_p) - avg_obs  # shape (T, 6)
+        obs_m = get_observables(resp_m) - avg_obs
 
-        return obs_p - avg_obs, obs_m - avg_obs
+        return obs_p, obs_m
     except Exception as e:
         print(f"Error in single_response: {e}")
         return None
@@ -68,16 +76,19 @@ def main():
     RESP_P = []
     RESP_M = []
 
-    # Define number of chunks dynamically (e.g., 10 chunks max)
-    n_chunks = 20
+    n_chunks = 10
     chunk_size = int(np.ceil(X.shape[0] / n_chunks))
 
     for eps in amplitudes:
-        resp_p_list = []
-        resp_m_list = []
+        print_memory(f"Start eps={eps}")
+        resp_p_acc = 0
+        resp_m_acc = 0
+        count = 0
 
         for start in range(0, X.shape[0], chunk_size):
             end = min(start + chunk_size, X.shape[0])
+            print_memory(f"  Chunk {start}-{end} before run")
+
             chunk_X = X[start:end]
 
             results = Parallel(n_jobs=-1, batch_size=10)(
@@ -85,21 +96,24 @@ def main():
                 for i in range(chunk_X.shape[0])
             )
 
-            # Filter None in case of errors
+            print_memory(f"  Chunk {start}-{end} after run")
+
             results = [r for r in results if r is not None]
             if results:
-                resp_p_chunk = np.stack([r[0] for r in results], axis=0)
-                resp_m_chunk = np.stack([r[1] for r in results], axis=0)
-                resp_p_list.append(resp_p_chunk)
-                resp_m_list.append(resp_m_chunk)
+                resp_p_chunk = np.mean([r[0] for r in results], axis=0)
+                resp_m_chunk = np.mean([r[1] for r in results], axis=0)
+                resp_p_acc += resp_p_chunk
+                resp_m_acc += resp_m_chunk
+                count += 1
 
             del results
             gc.collect()
 
-        resp_p_all = np.concatenate(resp_p_list, axis=0)
-        resp_m_all = np.concatenate(resp_m_list, axis=0)
-        RESP_P.append(np.mean(resp_p_all, axis=0))
-        RESP_M.append(np.mean(resp_m_all, axis=0))
+        resp_p_all = resp_p_acc / count
+        resp_m_all = resp_m_acc / count
+
+        RESP_P.append(resp_p_all)
+        RESP_M.append(resp_m_all)
 
     lorenz.trajectory = None
     lorenzResponse.trajectory = None
