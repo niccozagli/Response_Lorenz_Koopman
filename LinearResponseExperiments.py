@@ -14,28 +14,33 @@ def rho_pert(point : np.ndarray):
     return np.array( [0,x,0] )
 
 def single_response(xi, eps, avg_obs, base_lorenz, seed=None):
-    if seed is None:
-        seed = np.random.SeedSequence().generate_state(1)[0]
-    ss = np.random.SeedSequence(seed)
-    rng_p, rng_m = [np.random.default_rng(s) for s in ss.spawn(2)]
+    try:
+        if seed is None:
+            seed = np.random.SeedSequence().generate_state(1)[0]
+        ss = np.random.SeedSequence(seed)
+        rng_p, rng_m = [np.random.default_rng(s) for s in ss.spawn(2)]
 
-    lorenzResponse = lorenz63()
-    lorenzResponse.noise = base_lorenz.noise
-    lorenzResponse.t_span = base_lorenz.t_span
-    lorenzResponse.dt = base_lorenz.dt
-    lorenzResponse.tau = base_lorenz.tau
-    lorenzResponse.transient = base_lorenz.transient
+        lorenzResponse = lorenz63()
+        lorenzResponse.noise = base_lorenz.noise
+        lorenzResponse.t_span = base_lorenz.t_span
+        lorenzResponse.dt = base_lorenz.dt
+        lorenzResponse.tau = base_lorenz.tau
+        lorenzResponse.transient = base_lorenz.transient
 
-    lorenzResponse.y0 = xi + eps * rho_pert(xi)
-    _, resp_p = lorenzResponse.integrate_EM(rng=rng_p, show_progress=False)
+        lorenzResponse.y0 = xi + eps * rho_pert(xi)
+        _, resp_p = lorenzResponse.integrate_EM(rng=rng_p, show_progress=False)
 
-    lorenzResponse.y0 = xi - eps * rho_pert(xi)
-    _, resp_m = lorenzResponse.integrate_EM(rng=rng_m, show_progress=False)
+        lorenzResponse.y0 = xi - eps * rho_pert(xi)
+        _, resp_m = lorenzResponse.integrate_EM(rng=rng_m, show_progress=False)
 
-    obs_p = get_observables(resp_p)
-    obs_m = get_observables(resp_m)
+        obs_p = get_observables(resp_p)
+        obs_m = get_observables(resp_m)
 
-    return obs_p - avg_obs, obs_m - avg_obs
+        return obs_p - avg_obs, obs_m - avg_obs
+    except Exception as e:
+        print(f"Error in single_response: {e}")
+        return None
+
 
 
 def main():
@@ -65,10 +70,7 @@ def main():
 
     for eps in amplitudes:
         resp_p , resp_m = 0, 0
-        # for i in tqdm(range(X.shape[0])):
-        #     rp , rm = single_response(X[i,:],eps,avg_obs,lorenzResponse)
-        #     resp_p += rp / X.shape[0]
-        #     resp_m += rm / X.shape[0]
+
         results = Parallel(n_jobs=4)(
             delayed(single_response)(X[i,:], eps, avg_obs, lorenzResponse) 
             for i in tqdm(range(X.shape[0]))
