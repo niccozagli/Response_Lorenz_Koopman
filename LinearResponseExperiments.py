@@ -71,7 +71,7 @@ def main():
     for eps in amplitudes:
         resp_p , resp_m = 0, 0
 
-        results = Parallel(n_jobs=4,batch_size=50)(
+        results = Parallel(n_jobs=-1,batch_size=50)(
             delayed(single_response)(X[i,:], eps, avg_obs, lorenzResponse) 
             for i in tqdm(range(X.shape[0]))
         )
