@@ -42,7 +42,7 @@ def main():
     # Unperturbed system
     lorenz = lorenz63()
     lorenz.noise = 2
-    lorenz.t_span = (0,2*10**4/2)
+    lorenz.t_span = (0,10**5/2)
     lorenz.dt = 0.005
     lorenz.tau = 100
     t , X = lorenz.integrate_EM()
