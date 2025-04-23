@@ -51,13 +51,13 @@ def main():
     # Perturbation experiments settings
     lorenzResponse = lorenz63()
     lorenzResponse.noise = lorenz.noise
-    lorenzResponse.t_span = (0,50)
+    lorenzResponse.t_span = (0,30)
     lorenzResponse.dt = 0.005
     lorenzResponse.tau = 1
     lorenzResponse.transient = 0
 
     # Perturbation amplitudes
-    amplitudes = [0.3]#[0.2,0.4,0.8]
+    amplitudes = [0.2,0.4,0.8]
 
     # Performing the experiments
     RESP_P = []
