@@ -3,11 +3,12 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 from itertools import product
 import numpy as np
-from scipy.special import eval_chebyt
+from scipy.special import eval_chebyt, eval_chebyu
 from LorenzEDMD.utils.data_processing import normalise_data_chebyshev, get_spectral_properties
 from tqdm import tqdm
 from LorenzEDMD.utils.load_config import get_edmd_settings
 from LorenzEDMD.config import EDMDSettings
+from collections import defaultdict
 
 EDMD_SETTINGS = get_edmd_settings()
 
@@ -67,6 +68,7 @@ class EDMD_CHEB(BaseEDMD):
             eval_chebyt(i3, x[2])
             for (i1, i2, i3) in self.indices
         ])
+    
 
     def evaluate_dictionary_batch(self, data: np.ndarray) -> np.ndarray:
         T = data.shape[0]
@@ -79,7 +81,157 @@ class EDMD_CHEB(BaseEDMD):
                 eval_chebyt(k, data[:, 2])
             )
         return Psi
+    
+    def _chebyshev_U_to_T_matrix(self, N: int) -> np.ndarray:
+        """
+        Create a matrix M such that:
+        M[n, m] gives the coefficient of T_m in U_n(x)
+        Returns an (N x N) matrix.
+        """
+        M = np.zeros((N, N))
+        for n in range(N):
+            for m in range(0, n + 1, 2):
+                M[n, m] = 2
+        M[0, 0] = 1  # U_0(x) = T_0(x)
+        return M
 
+
+    # def spectral_derivative_tensor_chebyshev_correct(self, c_flat: np.ndarray, direction: int) -> np.ndarray:
+    #     """
+    #     Compute the spectral derivative of a tensorized Chebyshev expansion (1st-kind basis),
+    #     using exact U_n -> T_m coefficient transformation.
+
+    #     Parameters:
+    #     - c_flat: (N,) array of Chebyshev coefficients
+    #     - direction: 0 for ∂/∂x, 1 for ∂/∂y, 2 for ∂/∂z
+
+    #     Returns:
+    #     - C_flat: (N,) array of coefficients of the derivative in the Chebyshev T-basis
+    #     """
+        
+
+    #     indices = self.indices
+    #     index_map = {idx: n for n, idx in enumerate(indices)}
+    #     max_deg = np.max(np.array(indices), axis=0)
+    #     max_n = max_deg[direction]
+
+    #     UtoT = self._chebyshev_U_to_T_matrix(max_n + 1)
+    #     C_dict = defaultdict(float)
+
+    #     for n, (i, j, k) in enumerate(indices):
+    #         coeff = c_flat[n]
+
+    #         if direction == 0 and i > 0:
+    #             for m, val in enumerate(UtoT[i - 1]):
+    #                 if val != 0:
+    #                     new_idx = (m, j, k)
+    #                     if new_idx in index_map:
+    #                         C_dict[new_idx] += i * coeff * val
+
+    #         elif direction == 1 and j > 0:
+    #             for m, val in enumerate(UtoT[j - 1]):
+    #                 if val != 0:
+    #                     new_idx = (i, m, k)
+    #                     if new_idx in index_map:
+    #                         C_dict[new_idx] += j * coeff * val
+
+    #         elif direction == 2 and k > 0:
+    #             for m, val in enumerate(UtoT[k - 1]):
+    #                 if val != 0:
+    #                     new_idx = (i, j, m)
+    #                     if new_idx in index_map:
+    #                         C_dict[new_idx] += k * coeff * val
+
+    #     C_flat = np.zeros_like(c_flat)
+    #     for idx, val in C_dict.items():
+    #         C_flat[index_map[idx]] = val
+
+    #     return C_flat
+
+    def spectral_derivative_tensor_chebyshev_explicit(self, c_flat: np.ndarray, direction: int) -> np.ndarray:
+        """
+        Compute the spectral derivative of a tensorized Chebyshev T_n basis expansion
+        along the specified direction (0: x, 1: y, 2: z), using the exact formula:
+        
+            d/dx T_n(x) = n * U_{n-1}(x)
+            U_n(x) = 
+                2 * sum_{j odd > 0}^{n} T_j(x),           if n is odd
+                2 * sum_{j even ≥ 0}^{n} T_j(x) - 1,      if n is even
+
+        Parameters:
+        - c_flat: (N,) array of Chebyshev T-basis coefficients (flattened)
+        - direction: int in {0,1,2} for derivative direction
+
+        Returns:
+        - dc_flat: (N,) array of T-basis coefficients of the derivative
+        """
+        indices = self.indices
+        index_map = {idx: n for n, idx in enumerate(indices)}
+
+        dc_dict = defaultdict(float)
+
+        for n, (i, j, k) in enumerate(indices):
+            coeff = c_flat[n]
+
+            # Select degree in the direction
+            degs = [i, j, k]
+            deg = degs[direction]
+
+            if deg == 0:
+                continue  # T_0 -> 0
+
+            scale = deg  # from derivative rule
+            U_index = deg - 1
+
+            # Loop over T_j terms in expansion of U_{deg-1}
+            if U_index % 2 == 0:  # even
+                for m in range(0, U_index + 1, 2):
+                    new_degs = list(degs)
+                    new_degs[direction] = m
+                    new_idx = tuple(new_degs)
+                    if new_idx in index_map:
+                        dc_dict[new_idx] += coeff * scale * 2
+                # subtract the constant 1 term
+                new_degs = list(degs)
+                new_degs[direction] = 0
+                new_idx = tuple(new_degs)
+                if new_idx in index_map:
+                    dc_dict[new_idx] -= coeff * scale
+
+            else:  # odd
+                for m in range(1, U_index + 1, 2):
+                    new_degs = list(degs)
+                    new_degs[direction] = m
+                    new_idx = tuple(new_degs)
+                    if new_idx in index_map:
+                        dc_dict[new_idx] += coeff * scale * 2
+
+        # Build the output flat array
+        dc_flat = np.zeros_like(c_flat)
+        for idx, val in dc_dict.items():
+            dc_flat[index_map[idx]] = val
+
+        return dc_flat
+    
+    def build_derivative_matrix(self, direction: int) -> np.ndarray:
+        """
+        Constructs the matrix A^{(direction)} such that:
+        A @ c = coefficients of d/dx_i f(x), when f(x) = sum c_n psi_n(x)
+
+        Parameters:
+        - direction: 0 for x, 1 for y, 2 for z
+
+        Returns:
+        - A: (N, N) differentiation matrix in the Chebyshev dictionary
+        """
+        N = len(self.indices)
+        A = np.zeros((N, N))
+        I = np.eye(N)
+        for i in range(N):
+            A[:, i] = self.spectral_derivative_tensor_chebyshev_explicit(I[:, i], direction)
+        return A
+
+    
     def evaluate_koopman_eigenfunctions_batch(self, data: np.ndarray, eigenvectors: np.ndarray) -> np.ndarray:
         Psi_X = self.evaluate_dictionary_batch(data)
         return Psi_X @ eigenvectors
