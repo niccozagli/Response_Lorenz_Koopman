@@ -1,0 +1,44 @@
+[project]
+name = "LorenzEDMD"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Niccolo Zagli",email = "niccozagli@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy (>=2.2.5,<3.0.0)",
+    "scipy (>=1.15.3,<2.0.0)",
+    "matplotlib (>=3.10.3,<4.0.0)",
+    "tqdm (>=4.67.1,<5.0.0)"
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+black = "*"
+isort = "*"
+mypy = "*"
+pre-commit = "*"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+warn_unused_ignores = true
+show_error_codes = true
+strict_optional = true
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+

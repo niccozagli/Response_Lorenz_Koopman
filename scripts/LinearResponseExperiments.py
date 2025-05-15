@@ -1,11 +1,13 @@
-from LorenzEDMD.dynamical_system.Lorenz import lorenz63
-import pickle
-import numpy as np
-from tqdm import tqdm
-from joblib import Parallel, delayed
 import gc
-import psutil
 import os
+import pickle
+
+import numpy as np
+import psutil
+from joblib import Parallel, delayed
+from tqdm import tqdm
+
+from LorenzEDMD.dynamical_system.Lorenz import lorenz63
 
 
 def print_memory(label=""):
@@ -16,7 +18,7 @@ def print_memory(label=""):
 
 def get_observables(trajectory: np.ndarray):
     x, y, z = trajectory[:, 0], trajectory[:, 1], trajectory[:, 2]
-    observables = (x, y, z, x ** 2, y ** 2, z ** 2)
+    observables = (x, y, z, x**2, y**2, z**2)
     return np.column_stack(observables)
 
 
@@ -58,7 +60,7 @@ def main():
     # Unperturbed system
     lorenz = lorenz63()
     lorenz.noise = 2
-    lorenz.t_span = (0, 10 ** 5 / 2)
+    lorenz.t_span = (0, 10**5 / 2)
     lorenz.dt = 0.005
     lorenz.tau = 100
     t, X = lorenz.integrate_EM()
