@@ -43,15 +43,38 @@ class BaseEDMD(ABC):
             raise ValueError(f"Flight time = {self.flight_time} is too large for data length {N}.")
         return data[:-self.flight_time], data[self.flight_time:]
 
-    def perform_edmd(self, data: np.ndarray) -> np.ndarray:
-        X, Y = self._create_edmd_snapshots(data)
-        Phi_X = self.evaluate_dictionary_batch(X)
-        Phi_Y = self.evaluate_dictionary_batch(Y)
-        L = Phi_X.shape[0]
-        self.G = Phi_X.T @ Phi_X / L
-        self.A = Phi_X.T @ Phi_Y / L
-        self.K = np.linalg.solve(self.G, self.A)
-        return self.K
+def perform_edmd(self, data: np.ndarray, batch_size: int = 10_000) -> np.ndarray:
+
+    if batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
+
+    X, Y = self._create_edmd_snapshots(data)
+    N = X.shape[0]
+    n_features = self.evaluate_dictionary_batch(X[:1]).shape[1]
+
+    G = np.zeros((n_features, n_features))
+    A = np.zeros((n_features, n_features))
+
+    for start in range(0, N, batch_size):
+        end = min(start + batch_size, N)
+        X_batch = X[start:end]
+        Y_batch = Y[start:end]
+
+        Phi_X = self.evaluate_dictionary_batch(X_batch)
+        Phi_Y = self.evaluate_dictionary_batch(Y_batch)
+
+        G += Phi_X.T @ Phi_X
+        A += Phi_X.T @ Phi_Y
+
+    L = N  # total number of snapshot pairs
+    G /= L
+    A /= L
+
+    self.G = G
+    self.A = A
+    self.K = np.linalg.solve(G, A)
+    return self.K
+
 
 # ---------------------- Chebyshev EDMD ----------------------
 
@@ -95,58 +118,6 @@ class EDMD_CHEB(BaseEDMD):
         M[0, 0] = 1  # U_0(x) = T_0(x)
         return M
 
-
-    # def spectral_derivative_tensor_chebyshev_correct(self, c_flat: np.ndarray, direction: int) -> np.ndarray:
-    #     """
-    #     Compute the spectral derivative of a tensorized Chebyshev expansion (1st-kind basis),
-    #     using exact U_n -> T_m coefficient transformation.
-
-    #     Parameters:
-    #     - c_flat: (N,) array of Chebyshev coefficients
-    #     - direction: 0 for ∂/∂x, 1 for ∂/∂y, 2 for ∂/∂z
-
-    #     Returns:
-    #     - C_flat: (N,) array of coefficients of the derivative in the Chebyshev T-basis
-    #     """
-        
-
-    #     indices = self.indices
-    #     index_map = {idx: n for n, idx in enumerate(indices)}
-    #     max_deg = np.max(np.array(indices), axis=0)
-    #     max_n = max_deg[direction]
-
-    #     UtoT = self._chebyshev_U_to_T_matrix(max_n + 1)
-    #     C_dict = defaultdict(float)
-
-    #     for n, (i, j, k) in enumerate(indices):
-    #         coeff = c_flat[n]
-
-    #         if direction == 0 and i > 0:
-    #             for m, val in enumerate(UtoT[i - 1]):
-    #                 if val != 0:
-    #                     new_idx = (m, j, k)
-    #                     if new_idx in index_map:
-    #                         C_dict[new_idx] += i * coeff * val
-
-    #         elif direction == 1 and j > 0:
-    #             for m, val in enumerate(UtoT[j - 1]):
-    #                 if val != 0:
-    #                     new_idx = (i, m, k)
-    #                     if new_idx in index_map:
-    #                         C_dict[new_idx] += j * coeff * val
-
-    #         elif direction == 2 and k > 0:
-    #             for m, val in enumerate(UtoT[k - 1]):
-    #                 if val != 0:
-    #                     new_idx = (i, j, m)
-    #                     if new_idx in index_map:
-    #                         C_dict[new_idx] += k * coeff * val
-
-    #     C_flat = np.zeros_like(c_flat)
-    #     for idx, val in C_dict.items():
-    #         C_flat[index_map[idx]] = val
-
-    #     return C_flat
 
     def spectral_derivative_tensor_chebyshev_explicit(self, c_flat: np.ndarray, direction: int) -> np.ndarray:
         """
