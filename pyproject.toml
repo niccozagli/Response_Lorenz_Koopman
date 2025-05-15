@@ -2,9 +2,7 @@
 name = "LorenzEDMD"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Niccolo Zagli",email = "niccozagli@gmail.com"}
-]
+authors = ["Niccolo Zagli <niccozagli@gmail.com>"]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
