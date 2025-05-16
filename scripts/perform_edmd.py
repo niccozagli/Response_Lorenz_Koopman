@@ -4,9 +4,10 @@ from LorenzEDMD.dynamical_system.Lorenz import lorenz63
 from LorenzEDMD.EDMD.EDMD import EDMD_CHEB
 from LorenzEDMD.utils.data_processing import normalise_data_chebyshev
 from LorenzEDMD.utils.load_config import get_edmd_settings
+from LorenzEDMD.utils.paths import get_data_folder_path
 
 ######### CHOOSE THE PARAMETERS FOR EDMD ##########
-degrees = [11, 12, 13, 14, 15]
+degrees = [13, 15, 18]
 flight_times = [1]
 
 # Integrate the Lorenz system
@@ -30,5 +31,7 @@ for degree in degrees:
 lorenz.trajectory = None
 results = {"edmd results": list_degree, "lorenz settings": lorenz}
 
-with open("./data/edmd.pkl", "wb") as f:
+data_path = get_data_folder_path()
+f_name = "edmd_prova.pkl"
+with open(data_path / f_name, "wb") as f:
     pickle.dump(results, f)
