@@ -32,6 +32,6 @@ lorenz.trajectory = None
 results = {"edmd results": list_degree, "lorenz settings": lorenz}
 
 data_path = get_data_folder_path()
-f_name = "edmd.pkl"
+f_name = "edmd_prova.pkl"
 with open(data_path / f_name, "wb") as f:
     pickle.dump(results, f)

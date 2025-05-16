@@ -64,7 +64,7 @@ class BaseEDMD(ABC):
         G = np.zeros((n_features, n_features))
         A = np.zeros((n_features, n_features))
 
-        for start in range(0, N, batch_size):
+        for start in tqdm(range(0, N, batch_size)):
             end = min(start + batch_size, N)
             X_batch = X[start:end]
             Y_batch = Y[start:end]
