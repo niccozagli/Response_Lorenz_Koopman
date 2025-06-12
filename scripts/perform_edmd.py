@@ -7,7 +7,7 @@ from LorenzEDMD.utils.load_config import get_edmd_settings
 from LorenzEDMD.utils.paths import get_data_folder_path
 
 ######### CHOOSE THE PARAMETERS FOR EDMD ##########
-degrees = [13, 15, 18]
+degrees = [13, 14, 15, 16, 17, 18, 19, 20]
 flight_times = [1]
 
 # Integrate the Lorenz system
@@ -32,6 +32,6 @@ lorenz.trajectory = None
 results = {"edmd results": list_degree, "lorenz settings": lorenz}
 
 data_path = get_data_folder_path()
-f_name = "edmd_prova.pkl"
+f_name = "edmd_smalldt.pkl"
 with open(data_path / f_name, "wb") as f:
     pickle.dump(results, f)

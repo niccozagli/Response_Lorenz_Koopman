@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, cast
 
 import numpy as np
 import statsmodels.api as sm
+from numpy.typing import NDArray
 from scipy.linalg import eig
 
 
