@@ -17,8 +17,8 @@ class ModelSettings:  # class DynamicalSettings(BaseSettings):
 
     tmin: float = 0.0
     tmax: float = 10**6  # 6000.0
-    dt: float = 0.005  # John uses 0.001
-    tau: int = 20  # this saves the output every Delta_t = tau*dt
+    dt: float = 0.001  # John uses 0.001
+    tau: int = 100  # this saves the output every Delta_t = tau*dt
     transient: float = 500
 
 

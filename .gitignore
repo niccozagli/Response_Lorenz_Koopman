@@ -17,6 +17,7 @@ notebooks/.ipynb_checkpoints/
 *.json
 *.log
 *.out
+*.mat
 
 # Figures and plots
 *.png

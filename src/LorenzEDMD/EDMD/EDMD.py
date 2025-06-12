@@ -3,24 +3,25 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from itertools import product
-from typing import DefaultDict, List, Tuple, cast
+from typing import DefaultDict, Dict, List, Tuple, cast
 
 import numpy as np
 from scipy.special import eval_chebyt, eval_chebyu
 from tqdm import tqdm
 
 from LorenzEDMD.config import EDMDSettings
-from LorenzEDMD.utils.data_processing import (
-    get_spectral_properties,
-    normalise_data_chebyshev,
-)
+from LorenzEDMD.utils.data_processing import find_index, get_spectral_properties
 from LorenzEDMD.utils.load_config import get_edmd_settings
 
 EDMD_SETTINGS = get_edmd_settings()
 
 
-def chebyshev_indices(degree: int, dim: int = 3) -> List[Tuple[int, ...]]:
-    indices = [i for i in product(range(degree + 1), repeat=dim) if sum(i) <= degree]
+def chebyshev_indices(degree: int, dim: int = 3) -> List[Tuple[int, int, int]]:
+    indices = [
+        cast(Tuple[int, int, int], i)
+        for i in product(range(degree + 1), repeat=dim)
+        if sum(i) <= degree
+    ]
     return indices
 
 
@@ -231,6 +232,56 @@ class EDMD_CHEB(BaseEDMD):
         Psi_X = self.evaluate_dictionary_batch(data)
         Psi_reduced = Psi_X @ tsvd_regulariser.Ur
         return Psi_reduced @ tsvd_regulariser.reduced_right_eigvecs
+
+    def get_decomposition_observables(self) -> Dict[str, np.ndarray]:
+        dictionary_decomposition = {}
+
+        # Decomposing f(x,y,z) = z
+        degree_cheb = (0, 0, 1)
+        index = find_index(self.indices, degree_cheb)
+        projections_cheb_dictionary = np.zeros(len(self.indices))
+        projections_cheb_dictionary[index] = 1
+
+        dictionary_decomposition["z"] = projections_cheb_dictionary
+
+        # Decomposing f(x,y,z) = x^2
+        degree_cheb = (2, 0, 0)
+        index2 = find_index(self.indices, degree_cheb)
+        degree_cheb = (0, 0, 0)
+        index0 = find_index(self.indices, degree_cheb)
+        projections_cheb_dictionary = np.zeros(len(self.indices))
+        projections_cheb_dictionary[index0] = 1 / 2
+        projections_cheb_dictionary[index2] = 1 / 2
+
+        dictionary_decomposition["x^2"] = projections_cheb_dictionary
+
+        # Decomposing f(x,y,z) = y^2
+        degree_cheb = (0, 2, 0)
+        index2 = find_index(self.indices, degree_cheb)
+        projections_cheb_dictionary = np.zeros(len(self.indices))
+        projections_cheb_dictionary[index0] = 1 / 2
+        projections_cheb_dictionary[index2] = 1 / 2
+
+        dictionary_decomposition["y^2"] = projections_cheb_dictionary
+
+        # Decomposing f(x,y,z) = z^2
+        degree_cheb = (0, 0, 2)
+        index2 = find_index(self.indices, degree_cheb)
+        projections_cheb_dictionary = np.zeros(len(self.indices))
+        projections_cheb_dictionary[index0] = 1 / 2
+        projections_cheb_dictionary[index2] = 1 / 2
+
+        dictionary_decomposition["z^2"] = projections_cheb_dictionary
+
+        # Decomposing f(x,y,z) = xy
+        degree_cheb = (1, 1, 0)
+        index2 = find_index(self.indices, degree_cheb)
+        projections_cheb_dictionary = np.zeros(len(self.indices))
+        projections_cheb_dictionary[index2] = 1
+
+        dictionary_decomposition["xy"] = projections_cheb_dictionary
+
+        return dictionary_decomposition
 
 
 ############# REGULARISATION CLASSES ###############
