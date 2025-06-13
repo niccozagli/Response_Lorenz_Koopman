@@ -27,12 +27,19 @@ def normalise_data_chebyshev(
     return scaled, data_min, data_max
 
 
-def get_spectral_properties(K: np.ndarray):
+def get_spectral_properties(K: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Returns the sorted (decreasing orders in terms of absolute value) of eigenvalues
     and eigenvectors of the Koopman matrix
     """
-    eigenvalues, right_eigenvectors, left_eigenvectors = eig(K, left=True, right=True)
+
+    eig_result = cast(
+        tuple[NDArray[np.complex128], NDArray[np.complex128], NDArray[np.complex128]],
+        eig(K, left=True, right=True),
+    )
+
+    eigenvalues, left_eigenvectors, right_eigenvectors = eig_result
+
     # Sort indices by decreasing magnitude of eigenvalues
     sorted_indices = np.argsort(np.abs(eigenvalues))[::-1]
 
@@ -62,11 +69,15 @@ def get_acf(
     is_complex = check_if_complex(obs)
     if is_complex:
         obs_real, obs_imag = np.real(obs), np.imag(obs)
-        cf_real = sm.tsa.acf(obs_real, nlags=nlags) * np.var(obs_real)
-        cf_imag = sm.tsa.acf(obs_imag, nlags=nlags) * np.var(obs_imag)
+        cf_real = np.asarray(
+            sm.tsa.acf(obs_real, nlags=nlags, qstat=False, alpha=None)
+        ) * np.var(obs_real)
+        cf_imag = np.asarray(
+            sm.tsa.acf(obs_imag, nlags=nlags, qstat=False, alpha=None)
+        ) * np.var(obs_imag)
         cf = cf_real + cf_imag
     else:
-        cf = sm.tsa.acf(obs, nlags=nlags) * np.var(obs)
+        cf = np.asarray(sm.tsa.acf(obs, nlags=nlags)) * np.var(obs)
 
     lags = np.linspace(0, nlags * Dt, nlags + 1)
     return lags, cf
@@ -90,4 +101,4 @@ def Koopman_correlation_function(t, M, alpha1, alpha2, eigenvalues, to_include=N
     eigenvalues = eigenvalues[1 : to_include + 1]
     M = M[1 : to_include + 1, 1 : to_include + 1]
 
-    return (alpha1 * np.exp(t * eigenvalues)) @ M @ np.conj(alpha2)
+    return np.conj(alpha2) @ M @ (alpha1 * np.exp(t * eigenvalues))
