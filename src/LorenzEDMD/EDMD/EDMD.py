@@ -326,7 +326,7 @@ class TSVD:
 
     def get_spectral_properties(self):
         if self.Kreduced is not None:
-            eigenvalues, left_eigenvectors, right_eigenvectors = (
+            eigenvalues, right_eigenvectors, left_eigenvectors = (
                 get_spectral_properties(self.Kreduced)
             )  # right_eigenvectors , left_eigenvectors
             self.reduced_right_eigvecs = right_eigenvectors
